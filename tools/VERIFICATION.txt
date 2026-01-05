@@ -1,0 +1,4 @@
+The binary is downloaded directly from the official GitHub Release page of the project owner (acrion).
+Release URL: https://github.com/acrion/zelph/releases/tag/v0.9.2
+Build logs can be verified in GitHub Actions.
+Checksum verification is performed in chocolateyinstall.ps1.

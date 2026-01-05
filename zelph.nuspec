@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>zelph</id>
+    <version>0.9.2</version>
+    <packageSourceUrl>https://github.com/acrion/zelph</packageSourceUrl>
+    <owners>acrion</owners>
+    
+    <title>zelph</title>
+    <authors>Stefan Zipproth</authors>
+    <projectUrl>https://zelph.org</projectUrl>
+    <copyright>2025-2026 acrion innovations GmbH</copyright>
+    <licenseUrl>https://github.com/acrion/zelph/blob/main/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <projectSourceUrl>https://github.com/acrion/zelph</projectSourceUrl>
+    <docsUrl>https://zelph.org</docsUrl>
+    <bugTrackerUrl>https://github.com/acrion/zelph/issues</bugTrackerUrl>
+    <tags>zelph semantic-network reasoning wikidata ai cpp</tags>
+    <summary>A sophisticated semantic network system capable of encoding inference rules within the network itself.</summary>
+    <description>
+      zelph is a semantic network system built for powerful logical reasoning. 
+      It can process the entire Wikidata knowledge graph to detect contradictions and make logical deductions.
+      
+      This package installs the command line tool.
+    </description>
+    <releaseNotes>https://github.com/acrion/zelph/releases/tag/v0.9.2</releaseNotes>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
