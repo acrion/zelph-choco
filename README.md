@@ -34,6 +34,7 @@ Steps to release a new version (e.g., `0.9.3`):
 5.  Pack and test locally:
     ```powershell
     choco pack
+    choco uninstall zelph -y
     choco install zelph --source . -y --force
     zelph --version
     ```
