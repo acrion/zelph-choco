@@ -12,3 +12,15 @@ Install-ChocolateyZipPackage `
   -Url64bit $url `
   -Checksum64 $checksum `
   -ChecksumType64 'sha256'
+
+$testsExe = Join-Path $toolsDir 'zelph_tests.exe'
+& $testsExe
+if ($LASTEXITCODE -ne 0) {
+    throw "zelph_tests failed with exit code $LASTEXITCODE"
+}
+
+$zelphExe = Join-Path $toolsDir 'zelph.exe'
+$output = & $zelphExe --version 2>&1
+if ($output -notmatch 'Janet') {
+    throw "zelph installation verification failed: 'Janet' not found in version output"
+}
