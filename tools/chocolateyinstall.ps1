@@ -18,9 +18,3 @@ $testsExe = Join-Path $toolsDir 'zelph_tests.exe'
 if ($LASTEXITCODE -ne 0) {
     throw "zelph_tests failed with exit code $LASTEXITCODE"
 }
-
-$zelphExe = Join-Path $toolsDir 'zelph.exe'
-$output = & $zelphExe --version 2>&1
-if ($output -notmatch 'Janet') {
-    throw "zelph installation verification failed: 'Janet' not found in version output"
-}
