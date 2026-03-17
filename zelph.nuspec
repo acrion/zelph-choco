@@ -24,6 +24,9 @@
       This package installs the command line tool.
     </description>
     <releaseNotes>https://github.com/acrion/zelph/releases/tag/v0.9.5</releaseNotes>
+    <dependencies>
+      <dependency id="vcredist140" version="14.0.0" />
+    </dependencies>
   </metadata>
   <files>
     <file src="tools\**" target="tools" />
