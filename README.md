@@ -28,6 +28,7 @@ Steps to release a new version (e.g., `0.9.3`):
 2.  Get the SHA256 checksum of the new `zelph-windows.zip`.
 3.  Update `zelph.nuspec`:
     *   Update `<version>`.
+    *   Update `<releaseNotes>` (version number).
 4.  Update `tools/chocolateyinstall.ps1`:
     *   Update `$url` (version number).
     *   Update `$checksum`.
