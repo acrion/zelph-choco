@@ -1,7 +1,7 @@
 $packageName = 'zelph'
 $toolsDir    = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
-$url         = 'https://github.com/acrion/zelph/releases/download/v0.9.6/zelph-windows.zip'
-$checksum    = 'a50bc015bedd44f5aba8eafa24a4e0dea1d4129007d4a81d6e7bdd10ae56de95'
+$url         = 'https://github.com/acrion/zelph/releases/download/v0.9.7/zelph-windows.zip'
+$checksum    = '4f4154ba996d70ccc3c6e179fe66e04d1d15025f1247c26b9123d4467f769050'
 
 Install-ChocolateyZipPackage `
   -PackageName $packageName `
@@ -13,10 +13,8 @@ Install-ChocolateyZipPackage `
   -Checksum64 $checksum `
   -ChecksumType64 'sha256'
 
-<#
 $testsExe = Join-Path $toolsDir 'zelph_tests.exe'
 & $testsExe
 if ($LASTEXITCODE -ne 0) {
     throw "zelph_tests failed with exit code $LASTEXITCODE"
 }
-#>
