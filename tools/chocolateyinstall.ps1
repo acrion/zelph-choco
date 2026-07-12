@@ -1,7 +1,7 @@
 $packageName = 'zelph'
 $toolsDir    = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
-$url         = 'https://github.com/acrion/zelph/releases/download/v0.9.8/zelph-windows.zip'
-$checksum    = 'ef84b0f66248c57460edc4d595a3ed2642d79e35427de6782edba1a40ca25a91'
+$url         = 'https://github.com/acrion/zelph/releases/download/v0.9.9/zelph-windows.zip'
+$checksum    = '6431fb4ad55e0dbd9303e4cefff5312bd9b661a61623002cacdd836b2c8ea5b7'
 
 Install-ChocolateyZipPackage `
   -PackageName $packageName `
