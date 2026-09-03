@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
   <metadata>
     <id>zelph</id>
-    <version>0.9.9</version>
+    <version>1.0.0</version>
     <packageSourceUrl>https://github.com/acrion/zelph</packageSourceUrl>
     <owners>acrion</owners>
 
@@ -23,7 +23,7 @@
 
       This package installs the command line tool.
     </description>
-    <releaseNotes>https://github.com/acrion/zelph/releases/tag/v0.9.9</releaseNotes>
+    <releaseNotes>https://github.com/acrion/zelph/releases/tag/v1.0.0</releaseNotes>
     <dependencies>
       <dependency id="vcredist140" version="14.0.0" />
     </dependencies>
