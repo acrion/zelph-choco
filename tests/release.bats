@@ -14,7 +14,7 @@ setup() {
 # moves to a different schema version. The fixtures imitate that shape, because it
 # is the only shape validate_nupkg ever sees.
 packed_manifest() {
-    local version=$1
+    local version=$1 release_version=${2:-$1}
     cat <<MANIFEST
 <?xml version="1.0" encoding="utf-8"?>
 <package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
@@ -29,7 +29,7 @@ packed_manifest() {
     <projectUrl>https://zelph.org/</projectUrl>
     <description>a semantic network system</description>
     <summary>a semantic network system</summary>
-    <releaseNotes>https://github.com/acrion/zelph/releases/tag/v${version}</releaseNotes>
+    <releaseNotes>https://github.com/acrion/zelph/releases/tag/v${release_version}</releaseNotes>
     <copyright>2025-2026 acrion innovations GmbH</copyright>
     <tags>zelph semantic-network</tags>
     <projectSourceUrl>https://github.com/acrion/zelph</projectSourceUrl>
@@ -54,11 +54,11 @@ PS1
 # mono, and it is the only way to obtain the damaged packages the validation exists
 # to catch.
 build_nupkg() {
-    local version=$1 checksum=$2 name=$3
+    local version=$1 checksum=$2 name=$3 release_version=${4:-$1}
     local dir="${BATS_TEST_TMPDIR}/${name}"
     mkdir -p "${dir}/tools"
-    packed_manifest "$version" > "${dir}/zelph.nuspec"
-    packed_install_script "$version" "$checksum" > "${dir}/tools/chocolateyinstall.ps1"
+    packed_manifest "$version" "$release_version" > "${dir}/zelph.nuspec"
+    packed_install_script "$release_version" "$checksum" > "${dir}/tools/chocolateyinstall.ps1"
     ( cd "$dir" && zip -qr "../${name}.nupkg" . )
     printf '%s\n' "${BATS_TEST_TMPDIR}/${name}.nupkg"
 }
@@ -318,6 +318,84 @@ build_windows_zip() {
     [ "$status" -ne 0 ]
 }
 
+# --- package fix versions ----------------------------------------------------
+
+@test "update_nuspec keeps the release notes on the release version" {
+    cp "${REPO_ROOT}/zelph.nuspec" "${BATS_TEST_TMPDIR}/zelph.nuspec"
+    run update_nuspec "${BATS_TEST_TMPDIR}/zelph.nuspec" 2.3.4.5 2.3.4
+    [ "$status" -eq 0 ]
+    [ "$(xml_value "${BATS_TEST_TMPDIR}/zelph.nuspec" version)" = "2.3.4.5" ]
+    [ "$(xml_value "${BATS_TEST_TMPDIR}/zelph.nuspec" releaseNotes)" = "https://github.com/acrion/zelph/releases/tag/v2.3.4" ]
+}
+
+# The manifest and the install script part company for a package fix: the
+# manifest says 1.0.1.1, and everything that names the binaries stays on 1.0.1.
+# Both halves are held here, because getting either one wrong yields a package
+# that installs the wrong archive or sends its readers to a release that does
+# not exist.
+@test "validate_nupkg accepts a package fix version" {
+    local nupkg; nupkg=$(build_nupkg 1.0.1.1 "$CHECKSUM" fix 1.0.1)
+    run validate_nupkg "$nupkg" 1.0.1.1 "$CHECKSUM" 1.0.1
+    [ "$status" -eq 0 ]
+}
+
+@test "validate_nupkg rejects a package fix whose release notes followed the package version" {
+    local nupkg; nupkg=$(build_nupkg 1.0.1.1 "$CHECKSUM" fixnotes)
+    run validate_nupkg "$nupkg" 1.0.1.1 "$CHECKSUM" 1.0.1
+    [ "$status" -ne 0 ]
+}
+
+@test "validate_nupkg rejects a package fix whose install script followed the package version" {
+    local dir="${BATS_TEST_TMPDIR}/fixurl"
+    mkdir -p "${dir}/tools"
+    packed_manifest 1.0.1.1 1.0.1 > "${dir}/zelph.nuspec"
+    packed_install_script 1.0.1.1 "$CHECKSUM" > "${dir}/tools/chocolateyinstall.ps1"
+    ( cd "$dir" && zip -qr "../fixurl.nupkg" . )
+    run validate_nupkg "${BATS_TEST_TMPDIR}/fixurl.nupkg" 1.0.1.1 "$CHECKSUM" 1.0.1
+    [ "$status" -ne 0 ]
+}
+
+# --- the install script ------------------------------------------------------
+
+# Read the statements out of the `$statements = @( ... )` block of the install
+# script, one per line, with the surrounding single quotes removed.
+install_check_statements() {
+    sed -n "/^\\\$statements = @($/,/^)$/p" "${REPO_ROOT}/tools/chocolateyinstall.ps1" \
+        | sed -n "s|^[[:space:]]*'\\(.*\\)'$|\\1|p"
+}
+
+# The package ran the fast test tier at install time until 1.0.1, and the
+# Chocolatey verifier killed the install when its execution timeout expired.
+# Nothing about that is visible in a reading of the script -- it looks like a
+# thorough install -- so the rule is held here instead.
+@test "the install script does not run the test suite" {
+    run grep -n 'zelph_tests' "${REPO_ROOT}/tools/chocolateyinstall.ps1"
+    [ "$status" -ne 0 ]
+}
+
+@test "the install script checks that zelph derives something" {
+    grep -q "Join-Path \$toolsDir 'zelph.exe'" "${REPO_ROOT}/tools/chocolateyinstall.ps1"
+    [ "$(install_check_statements | wc -l)" -eq 3 ]
+    [ -n "$(ps1_value "${REPO_ROOT}/tools/chocolateyinstall.ps1" derived)" ]
+}
+
+# The install script waits for one line of zelph output, and on the day that
+# line is worded differently every Windows install fails. Neither repository
+# can see the other, so the two are tied together here: the statements are read
+# out of the script and put to a real zelph, and the answer has to carry what
+# the script waits for.
+@test "zelph really derives what the install script waits for" {
+    local zelph="${ZELPH_BIN:-$(command -v zelph || true)}"
+    [ -n "$zelph" ] && [ -x "$zelph" ] || skip "no zelph binary (set ZELPH_BIN)"
+
+    local derived
+    derived=$(ps1_value "${REPO_ROOT}/tools/chocolateyinstall.ps1" derived)
+
+    run env ZELPH_NO_RLWRAP=1 "$zelph" < <(install_check_statements)
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"$derived"* ]]
+}
+
 # --- the real thing ----------------------------------------------------------
 
 # The cases above work on fixtures. This one packs with the real choco and hands the
@@ -339,5 +417,27 @@ build_windows_zip() {
     [ "$status" -eq 0 ]
 
     run validate_nupkg "${BATS_TEST_TMPDIR}/zelph.2.3.4.nupkg" 2.3.4 "$CHECKSUM"
+    [ "$status" -eq 0 ]
+}
+
+# A four-part version is where the packer is most likely to disagree with the
+# script: it decides the file name, and it rewrites the manifest. This packs one
+# with the real tool and hands the result to the same validation.
+@test "choco pack produces a package fix version that passes validation" {
+    local choco_home="${CHOCOLATEY_HOME:-$HOME/.local/lib/chocolatey}"
+    [ -f "${choco_home}/choco.exe" ] || skip "no Chocolatey installation in ${choco_home}"
+    command -v mono >/dev/null || skip "mono is not installed"
+
+    cp "${REPO_ROOT}/zelph.nuspec" "${BATS_TEST_TMPDIR}/zelph.nuspec"
+    mkdir -p "${BATS_TEST_TMPDIR}/tools"
+    cp "${REPO_ROOT}/tools/chocolateyinstall.ps1" "${BATS_TEST_TMPDIR}/tools/"
+    update_nuspec "${BATS_TEST_TMPDIR}/zelph.nuspec" 2.3.4.5 2.3.4
+    update_install_script "${BATS_TEST_TMPDIR}/tools/chocolateyinstall.ps1" 2.3.4 "$CHECKSUM"
+
+    ChocolateyInstall="$choco_home" run mono "${choco_home}/choco.exe" pack \
+        "${BATS_TEST_TMPDIR}/zelph.nuspec" --output-directory="${BATS_TEST_TMPDIR}"
+    [ "$status" -eq 0 ]
+
+    run validate_nupkg "${BATS_TEST_TMPDIR}/zelph.2.3.4.5.nupkg" 2.3.4.5 "$CHECKSUM" 2.3.4
     [ "$status" -eq 0 ]
 }

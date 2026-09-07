@@ -20,9 +20,12 @@ REQUIRED_MANIFEST_ELEMENTS=(
     projectSourceUrl packageSourceUrl docsUrl bugTrackerUrl
 )
 
-# The install script runs zelph_tests.exe following unpacking, and zelph.exe
-# needs zelph.dll adjacent to it. An archive missing any of them would yield a
-# package that fails on the user's machine rather than here.
+# The install script runs zelph.exe after unpacking, and that needs zelph.dll
+# beside it. zelph_tests.exe is no longer part of the check -- it is the suite a
+# user may run by hand -- but a release archive is expected to carry it, so its
+# absence means a release that went wrong rather than a decision. An archive
+# missing any of the three would yield a package that fails on the user's
+# machine rather than here.
 REQUIRED_ZIP_ENTRIES=(zelph.exe zelph_tests.exe zelph.dll)
 
 log()  { printf '==> %s\n' "$*"; }
@@ -38,6 +41,8 @@ to the Chocolatey community repository.
 
 Options:
   --tag TAG            Release the given git tag (default: latest zelph release)
+  --package-fix N      Publish the package again as VERSION.N around the
+                       unchanged binaries of TAG, e.g. 1.0.1.1 for N=1
   --no-push            Stop after packing and validating, do not push
   --yes                Do not ask for confirmation before pushing
   --allow-dirty        Proceed even if the repository has uncommitted changes
@@ -119,6 +124,23 @@ assert_not_published() {
     esac
 }
 
+# A fix version is only meaningful when built upon one that is on the feed.
+# Where the three-component version never arrived there, the thing to push is
+# that one, and a fourth component would only make the mistake permanent.
+assert_published() {
+    local version=$1 code
+    code=$(curl -sS -o /dev/null -w '%{http_code}' \
+        "${CHOCO_FEED}/Packages(Id='${PACKAGE_ID}',Version='${version}')") \
+        || { echo "error: cannot reach the Chocolatey community feed" >&2; return 1; }
+    case $code in
+        200) return 0 ;;
+        404) printf 'error: %s %s is not on the community feed, so there is nothing to fix\n' \
+                 "$PACKAGE_ID" "$version" >&2; return 1 ;;
+        *)   printf 'error: the community feed answered HTTP %s, cannot tell whether %s exists\n' \
+                 "$code" "$version" >&2; return 1 ;;
+    esac
+}
+
 read_api_key() {
     local file=$1 mode key
     [[ -f $file ]] || { printf 'error: no API key file at %s\n' "$file" >&2; return 1; }
@@ -148,15 +170,18 @@ verify_windows_zip() {
         || { printf 'error: %s contains no stdlib/*.zph files\n' "$zip" >&2; return 1; }
 }
 
+# The two versions are the same for an ordinary release and differ for a
+# package fix, where the manifest carries 1.0.1.1 while the release notes still
+# point at the tag v1.0.1 that the binaries come from.
 update_nuspec() {
-    local file=$1 version=$2
+    local file=$1 version=$2 release_version=${3:-$2}
     sed -i \
         -e "0,\\|<version>[^<]*</version>|s||<version>${version}</version>|" \
-        -e "s|<releaseNotes>[^<]*</releaseNotes>|<releaseNotes>https://github.com/${GITHUB_REPO}/releases/tag/v${version}</releaseNotes>|" \
+        -e "s|<releaseNotes>[^<]*</releaseNotes>|<releaseNotes>https://github.com/${GITHUB_REPO}/releases/tag/v${release_version}</releaseNotes>|" \
         "$file" || return 1
     [[ $(xml_value "$file" version) == "$version" ]] \
         || { printf 'error: rewriting <version> in %s did not take effect\n' "$file" >&2; return 1; }
-    [[ $(xml_value "$file" releaseNotes) == *"/v${version}" ]] \
+    [[ $(xml_value "$file" releaseNotes) == *"/v${release_version}" ]] \
         || { printf 'error: rewriting <releaseNotes> in %s did not take effect\n' "$file" >&2; return 1; }
 }
 
@@ -176,7 +201,7 @@ update_install_script() {
 }
 
 validate_nupkg() {
-    local nupkg=$1 version=$2 checksum=$3
+    local nupkg=$1 version=$2 checksum=$3 release_version=${4:-$2}
     local tmp listing element status=0
 
     [[ -f $nupkg ]] || { printf 'error: %s was not created\n' "$nupkg" >&2; return 1; }
@@ -218,9 +243,17 @@ validate_nupkg() {
         printf 'error: the install script inside %s carries the wrong checksum\n' "$nupkg" >&2
         status=1
     fi
-    if [[ $(ps1_value "$tmp/tools/chocolateyinstall.ps1" url) != *"/v${version}/${WINDOWS_ASSET}" ]]; then
+    if [[ $(ps1_value "$tmp/tools/chocolateyinstall.ps1" url) != *"/v${release_version}/${WINDOWS_ASSET}" ]]; then
         printf 'error: the install script inside %s does not download v%s of %s\n' \
-            "$nupkg" "$version" "$WINDOWS_ASSET" >&2
+            "$nupkg" "$release_version" "$WINDOWS_ASSET" >&2
+        status=1
+    fi
+
+    # A package fix keeps the release notes on the version the binaries come
+    # from, so this is the one element that must NOT follow the package version.
+    if [[ $(xml_value "$tmp/${PACKAGE_ID}.nuspec" releaseNotes) != *"/v${release_version}" ]]; then
+        printf 'error: the manifest inside %s does not point its release notes at v%s\n' \
+            "$nupkg" "$release_version" >&2
         status=1
     fi
 
@@ -229,13 +262,14 @@ validate_nupkg() {
 }
 
 main() {
-    local tag='' do_push=1 assume_yes=0 allow_dirty=0
+    local tag='' do_push=1 assume_yes=0 allow_dirty=0 package_fix=''
     local api_key_file="${ZELPH_CHOCO_API_KEY_FILE:-${XDG_CONFIG_HOME:-$HOME/.config}/zelph-choco/apikey}"
     local choco_home="${CHOCOLATEY_HOME:-$HOME/.local/lib/chocolatey}"
 
     while [[ $# -gt 0 ]]; do
         case $1 in
             --tag)           tag=${2:?--tag needs a value}; shift 2 ;;
+            --package-fix)   package_fix=${2:?--package-fix needs a value}; shift 2 ;;
             --no-push)       do_push=0; shift ;;
             --yes|-y)        assume_yes=1; shift ;;
             --allow-dirty)   allow_dirty=1; shift ;;
@@ -288,11 +322,26 @@ main() {
     local version
     version=$(version_from_tag "$tag") || exit 1
 
+    # A package fix version -- 1.0.1.1 -- is Chocolatey's notation for
+    # publishing the package again around unchanged binaries. The community
+    # feed never takes the same version twice, so a package that was wrong
+    # while the release it points at was right has no other way back. Only the
+    # fourth component moves: the archive, its checksum, the tag and the
+    # release notes all stay on the three-component release version.
+    local package_version=$version
+    if [[ -n $package_fix ]]; then
+        [[ $package_fix =~ ^[1-9][0-9]*$ ]] \
+            || die "--package-fix takes a positive whole number, not ${package_fix}"
+        package_version="${version}.${package_fix}"
+        assert_published "$version" || exit 1
+        log "publishing ${PACKAGE_ID} ${package_version} around the binaries of ${tag}"
+    fi
+
     local expected_digest
     expected_digest=$(github_asset_digest "$tag" "$WINDOWS_ASSET") || exit 1
 
-    assert_not_published "$version" || exit 1
-    log "${PACKAGE_ID} ${version} is not on the community feed yet"
+    assert_not_published "$package_version" || exit 1
+    log "${PACKAGE_ID} ${package_version} is not on the community feed yet"
 
     local workdir
     workdir=$(mktemp -d) || die "cannot create a temporary directory"
@@ -315,16 +364,16 @@ main() {
     verify_windows_zip "$zip" || exit 1
     log "checksum ${checksum} confirmed against the GitHub asset digest"
 
-    update_nuspec "$nuspec" "$version" || exit 1
+    update_nuspec "$nuspec" "$package_version" "$version" || exit 1
     update_install_script "$install_script" "$version" "$checksum" || exit 1
     log "updated ${PACKAGE_ID}.nuspec and tools/chocolateyinstall.ps1"
     git -C "$repo_root" --no-pager diff --stat
 
-    local nupkg="${repo_root}/${PACKAGE_ID}.${version}.nupkg"
+    local nupkg="${repo_root}/${PACKAGE_ID}.${package_version}.nupkg"
     rm -f "$nupkg"
     mono "$choco_exe" pack "$nuspec" --output-directory="$repo_root" >/dev/null \
         || die "choco pack failed"
-    validate_nupkg "$nupkg" "$version" "$checksum" || exit 1
+    validate_nupkg "$nupkg" "$package_version" "$checksum" "$version" || exit 1
     log "packed and validated ${nupkg#"${repo_root}/"}"
 
     if [[ $do_push -eq 0 ]]; then
@@ -334,15 +383,15 @@ main() {
 
     if [[ $assume_yes -eq 0 ]]; then
         local answer
-        printf 'Push %s %s to %s? [y/N] ' "$PACKAGE_ID" "$version" "$PUSH_SOURCE"
+        printf 'Push %s %s to %s? [y/N] ' "$PACKAGE_ID" "$package_version" "$PUSH_SOURCE"
         read -r answer
         [[ $answer == [yY] || $answer == [yY][eE][sS] ]] || die "aborted"
     fi
 
     mono "$choco_exe" push "$nupkg" --source "$PUSH_SOURCE" --api-key "$api_key" \
         || die "choco push failed"
-    log "pushed ${PACKAGE_ID} ${version}; it now waits for moderation"
-    log "commit the version bump: git -C ${repo_root} commit -am 'v${version}'"
+    log "pushed ${PACKAGE_ID} ${package_version}; it now waits for moderation"
+    log "commit the version bump: git -C ${repo_root} commit -am 'v${package_version}'"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

@@ -66,11 +66,12 @@ The script takes the newest zelph release, works out version and checksum from i
 - the release does not exist on GitHub, or carries no `zelph-windows.zip`
 - that version is already published on the community feed
 - the archive does not hash to the digest GitHub records for it
+- `--package-fix` was asked for while the three-component version is not on the community feed
 - the archive lacks `zelph.exe`, `zelph_tests.exe`, `zelph.dll` or the standard library
 - rewriting the nuspec or the install script did not take effect
 - the built package is missing any of the manifest elements listed below, states the wrong version, or carries an install script with the wrong checksum or URL
 
-Useful options: `--tag vX.Y.Z` releases a version apart from the latest, `--no-push` stops after packing and validating, `--yes` skips the question, `--api-key-file` and `--choco-home` direct to alternative locations. `--help` displays every one.
+Useful options: `--tag vX.Y.Z` releases a version apart from the latest, `--package-fix N` publishes the package again around unchanged binaries (see below), `--no-push` stops after packing and validating, `--yes` skips the question, `--api-key-file` and `--choco-home` direct to alternative locations. `--help` displays every one.
 
 Commit the two rewritten files afterwards. The script does not commit.
 
@@ -79,6 +80,22 @@ Commit the two rewritten files afterwards. The script does not commit.
 Packing rewrites the manifest, and this is where `nuget pack` and `dotnet pack` falter when creating a Chocolatey package: their manifest model lacks `packageSourceUrl`, `projectSourceUrl`, `docsUrl` and `bugTrackerUrl`, so those four elements are dropped without a word. The result installs correctly and still ends up in the community repository devoid of its source, documentation and issue links, where the moderation rules flag it. Chocolatey CLI keeps them.
 
 That is why the script drives the real Chocolatey CLI, and why it opens the package it has just built to confirm the four elements survived.
+
+### Publishing the package again without a new zelph release
+
+The community feed never takes the same version twice. Where the binaries are right and only the package was wrong – the 1.0.1 install script ran a test suite, and the verifier killed the install when its timeout expired – Chocolatey’s response is a package fix version, a fourth component on the release version:
+
+```bash
+scripts/release.sh --tag v1.0.1 --package-fix 1
+```
+
+That publishes `1.0.1.1`. Only the `<version>` of the manifest moves; the archive, its checksum, the release notes and the tag all stay on `v1.0.1`. The script turns the option down when `1.0.1` is not on the feed, because the version to push is then that one.
+
+### What the install script checks
+
+After unpacking, the package puts three statements through `zelph.exe` and requires the answer to carry the fact they imply. It takes a few milliseconds, and it proves the chain that matters on a stranger's machine: the executable started, `zelph.dll` loaded beside it, the parser read a rule, and the engine derived something that stands in none of the three lines. The failure it exists for is a processor below `x86-64-v3`, which stops the binaries with an illegal instruction instead of a message.
+
+Until 1.0.1 the script ran the fast test tier instead. That takes twenty-one seconds here, forty-six on the project's Windows runner, and more than forty-three minutes on the Chocolatey verifier, which killed the install when its execution timeout expired and turned the package down. A package may not spend a user's time on a test suite, and a budget measured on a machine you own says nothing about one you have never seen.
 
 ### Releasing on Windows
 
@@ -105,12 +122,19 @@ Steps to release a new version (e.g., `0.9.3`):
     ```
 7.  Commit and push changes to this repository.
 
-Step 5 has no counterpart on Linux, because the install script uses Windows-only Chocolatey functions. What it would establish about the binaries themselves is already covered by the zelph project’s own Windows workflow.
+Step 5 has no counterpart on Linux, because the install script uses Windows-only Chocolatey functions. It is the step the section below is about.
 
-### Tests
+### Testing the package without publishing anything
+
+`scripts/release.sh` never runs the install script – Chocolatey installs only on Windows – so the two ways to exercise it before a push are:
+
+- On any Windows machine, against a package built here: `choco pack`, then `choco install zelph --source . -y --force`. The GitHub release the script downloads from is public before the Chocolatey push, so this needs nothing new to be published.
+- Against the verifier's own setup: [chocolatey-community/chocolatey-test-environment](https://github.com/chocolatey-community/chocolatey-test-environment) is the Vagrant box the package verifier mirrors. It runs on Linux with VirtualBox, and it is the only way to meet a machine as slow as theirs.
+
+`bats tests/` covers what can be checked without Windows, including that a real zelph still derives the line the install script waits for. That case needs a binary; point `ZELPH_BIN` at one, otherwise it is skipped:
 
 ```bash
-bats tests/
+ZELPH_BIN=/path/to/zelph bats tests/
 shellcheck scripts/*.sh
 ```
 
