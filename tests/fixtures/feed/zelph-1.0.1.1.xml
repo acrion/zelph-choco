@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<entry xml:base="https://community.chocolatey.org/api/v2/" xmlns:d="http://schemas.microsoft.com/ado/2007/08/dataservices" xmlns:m="http://schemas.microsoft.com/ado/2007/08/dataservices/metadata" xmlns="http://www.w3.org/2005/Atom">
+  <id>https://community.chocolatey.org/api/v2/Packages(Id='zelph',Version='1.0.1.1')</id>
+  <title type="text">zelph</title>
+  <summary type="text">A sophisticated semantic network system capable of encoding inference rules within the network itself.</summary>
+  <updated>2026-09-10T12:47:53Z</updated>
+  <author>
+    <name>Stefan Zipproth</name>
+  </author>
+  <link rel="edit-media" title="V2FeedPackage" href="Packages(Id='zelph',Version='1.0.1.1')/$value" />
+  <link rel="edit" title="V2FeedPackage" href="Packages(Id='zelph',Version='1.0.1.1')" />
+  <category term="CCR.Website.V2FeedPackage" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme" />
+  <content type="application/zip" src="https://community.chocolatey.org/api/v2/package/zelph/1.0.1.1" />
+  <m:properties xmlns:m="http://schemas.microsoft.com/ado/2007/08/dataservices/metadata" xmlns:d="http://schemas.microsoft.com/ado/2007/08/dataservices">
+    <d:Version>1.0.1.1</d:Version>
+    <d:Title>zelph</d:Title>
+    <d:Description>zelph is a semantic network system built for powerful logical reasoning.
+      It can process the entire Wikidata knowledge graph to detect contradictions and make logical deductions.
+
+      This package installs the command line tool.</d:Description>
+    <d:Tags>zelph semantic-network reasoning wikidata ai cpp</d:Tags>
+    <d:Copyright>2025-2026 acrion innovations GmbH</d:Copyright>
+    <d:Created m:type="Edm.DateTime">2026-09-07T11:50:15.577</d:Created>
+    <d:Dependencies>vcredist140:14.0.0:</d:Dependencies>
+    <d:DownloadCount m:type="Edm.Int32">0</d:DownloadCount>
+    <d:VersionDownloadCount m:type="Edm.Int32">5</d:VersionDownloadCount>
+    <d:GalleryDetailsUrl>https://community.chocolatey.org/packages/zelph/1.0.1.1</d:GalleryDetailsUrl>
+    <d:ReportAbuseUrl>https://community.chocolatey.org/package/ReportAbuse/zelph/1.0.1.1</d:ReportAbuseUrl>
+    <d:IconUrl></d:IconUrl>
+    <d:IsLatestVersion m:type="Edm.Boolean">true</d:IsLatestVersion>
+    <d:IsAbsoluteLatestVersion m:type="Edm.Boolean">true</d:IsAbsoluteLatestVersion>
+    <d:IsPrerelease m:type="Edm.Boolean">false</d:IsPrerelease>
+    <d:Language m:null="true"></d:Language>
+    <d:Published m:type="Edm.DateTime">2026-09-07T11:50:15.577</d:Published>
+    <d:LicenseUrl>https://github.com/acrion/zelph/blob/main/LICENSE</d:LicenseUrl>
+    <d:RequireLicenseAcceptance m:type="Edm.Boolean">false</d:RequireLicenseAcceptance>
+    <d:PackageHash>c6KPWN9DHDddBAp/PgD+B3YOM/0u1K+GLH7qPgBb8fSVyGSoNSdO06YdVMOgC3X8QBEoVOkhVmU/0jdNgjR10w==</d:PackageHash>
+    <d:PackageHashAlgorithm>SHA512</d:PackageHashAlgorithm>
+    <d:PackageSize m:type="Edm.Int64">3760</d:PackageSize>
+    <d:ProjectUrl>https://zelph.org/</d:ProjectUrl>
+    <d:ReleaseNotes>https://github.com/acrion/zelph/releases/tag/v1.0.1</d:ReleaseNotes>
+    <d:ProjectSourceUrl>https://github.com/acrion/zelph</d:ProjectSourceUrl>
+    <d:PackageSourceUrl>https://github.com/acrion/zelph</d:PackageSourceUrl>
+    <d:DocsUrl>https://zelph.org/</d:DocsUrl>
+    <d:MailingListUrl></d:MailingListUrl>
+    <d:BugTrackerUrl>https://github.com/acrion/zelph/issues</d:BugTrackerUrl>
+    <d:IsApproved m:type="Edm.Boolean">true</d:IsApproved>
+    <d:PackageStatus>Approved</d:PackageStatus>
+    <d:PackageSubmittedStatus>Waiting</d:PackageSubmittedStatus>
+    <d:PackageTestResultUrl>https://gist.github.com/choco-bot/fe75a18d65eac35310c096ccced4edd2</d:PackageTestResultUrl>
+    <d:PackageTestResultStatus>Passing</d:PackageTestResultStatus>
+    <d:PackageTestResultStatusDate m:type="Edm.DateTime">2026-09-07T12:31:52.967</d:PackageTestResultStatusDate>
+    <d:PackageValidationResultStatus>Passing</d:PackageValidationResultStatus>
+    <d:PackageValidationResultDate m:type="Edm.DateTime">2026-09-07T12:22:23.967</d:PackageValidationResultDate>
+    <d:PackageCleanupResultDate m:type="Edm.DateTime" m:null="true"></d:PackageCleanupResultDate>
+    <d:PackageReviewedDate m:type="Edm.DateTime">2026-09-10T12:47:53.923</d:PackageReviewedDate>
+    <d:PackageApprovedDate m:type="Edm.DateTime">2026-09-10T12:47:53.923</d:PackageApprovedDate>
+    <d:PackageReviewer>virtualex</d:PackageReviewer>
+    <d:IsDownloadCacheAvailable m:type="Edm.Boolean">false</d:IsDownloadCacheAvailable>
+    <d:DownloadCacheStatus>Investigate</d:DownloadCacheStatus>
+    <d:DownloadCacheDate m:type="Edm.DateTime">2026-09-10T13:49:01.4292721Z</d:DownloadCacheDate>
+    <d:DownloadCache m:null="true"></d:DownloadCache>
+    <d:PackageScanStatus>Flagged</d:PackageScanStatus>
+    <d:PackageScanResultDate m:type="Edm.DateTime">2026-09-07T12:35:44.487</d:PackageScanResultDate>
+    <d:PackageScanFlagResult>Note</d:PackageScanFlagResult>
+  </m:properties>
+</entry>

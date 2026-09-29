@@ -64,16 +64,18 @@ The script takes the newest zelph release, works out version and checksum from i
 - the repository has uncommitted changes
 - the API key file is missing, readable by others, empty, or holds more than the bare key
 - the release does not exist on GitHub, or carries no `zelph-windows.zip`
-- that version is already published on the community feed
+- that version has already been approved on the community feed, where it is final
+- a version of the same release that sorts above it has already been approved, meaning the push would never make it to users
 - the archive does not hash to the digest GitHub records for it
-- `--package-fix` was asked for while the three-component version is not on the community feed
+- `--package-fix` was requested despite no version of that release being approved on the community feed
+- `--package-fix` was requested on a day for which the fix has already been approved
 - the archive lacks `zelph.exe`, `zelph_tests.exe`, `zelph.dll` or the standard library
 - rewriting the nuspec or the install script did not take effect
 - the built package is missing any of the manifest elements listed below, states the wrong version, or carries an install script with the wrong checksum or URL
 
-Useful options: `--tag vX.Y.Z` releases a version apart from the latest, `--package-fix N` publishes the package again around unchanged binaries (see below), `--no-push` stops after packing and validating, `--yes` skips the question, `--api-key-file` and `--choco-home` direct to alternative locations. `--help` displays every one.
+Useful options: `--tag vX.Y.Z` releases a version apart from the latest, `--package-fix` publishes the package again around unchanged binaries (see below), `--status` shows where every version stands on the community feed and stops there, `--no-push` stops after packing and validating, `--yes` skips the question, `--api-key-file` and `--choco-home` direct to alternative locations. `--help` displays every one.
 
-Commit the two rewritten files afterwards. The script does not commit.
+Afterwards, commit the two files that have been rewritten, provided the script does not indicate that no changes occurred. The script refrains from performing the commit.
 
 ### Why the built package is validated
 
@@ -83,13 +85,31 @@ That is why the script drives the real Chocolatey CLI, and why it opens the pack
 
 ### Publishing the package again without a new zelph release
 
-The community feed never takes the same version twice. Where the binaries are right and only the package was wrong – the 1.0.1 install script ran a test suite, and the verifier killed the install when its timeout expired – Chocolatey’s response is a package fix version, a fourth component on the release version:
+How a package gets republished hinges on whether the community repository has approved it yet.
+
+While a version is still in moderation, it undergoes correction under its own number. Chocolatey accepts the same version again until it is approved, which aligns with the process moderators anticipate. When the feed reports the version is in moderation, `scripts/release.sh --tag v1.0.1` says so and pushes the corrected package in place of the waiting one. There is one exception: users always receive the highest approved version, meaning that if an approved fix for the same release sorts above the waiting version, the script declines and asks for a package fix instead. This is the state of `1.0.1` relative to `1.0.1.1`.
+
+After a version has been approved, it is final. When the binaries are correct but the package itself is flawed, Chocolatey’s answer is a package fix version – a supplementary fourth component appended to the release version – and it recommends the date for it:
 
 ```bash
-scripts/release.sh --tag v1.0.1 --package-fix 1
+scripts/release.sh --tag v1.0.1 --package-fix
 ```
 
-That publishes `1.0.1.1`. Only the `<version>` of the manifest moves; the archive, its checksum, the release notes and the tag all stay on `v1.0.1`. The script turns the option down when `1.0.1` is not on the feed, because the version to push is then that one.
+That publishes `1.0.1.YYYYMMDD` using the current date in UTC. Only the `<version>` field within the manifest moves; the archive, its checksum, the release notes, and the tag remain fixed at `v1.0.1`. Should a fix version of the release still be in moderation, the script re-pushes that specific version rather than generating a new date. The date allows one fix per day: after the day’s fix is approved, the next one may only be released on the following UTC day. The script turns the option down when no version of the release has been approved; if the release itself is then still in moderation, it requests a re-push without the option. The current package, `1.0.1.1`, predates the date-based format.
+
+### Versions left in moderation
+
+Each version constitutes a moderation case independently, and approving a more recent one does not close an older one. A version left behind remains in moderation, and each page of the package displays a notice indicating that versions are awaiting moderation. After 20 days, Chocolatey sends a reminder, and after an additional 15 days, it automatically rejects the version.
+
+Before every push, the script checks every version that this repository has ever packaged and warns about each one still in moderation. This list is derived from the history of `zelph.nuspec`, as the feed’s listing omits versions currently in moderation. For an older version that failed an automated check, the script directs attention to the page where it may be rejected. A newer version, instead, is corrected by pushing it again under its own number, as a rejected number can never be reused. A version that a moderator requested to revise remains pending until either a response is received or a corrected push is submitted. To see the state at any time without building anything:
+
+```bash
+scripts/release.sh --status
+```
+
+A version that did not pass an automated check may be rejected by its maintainer: sign in, navigate to the page for that version (the script prints it), tick “Reject Package?” in the review section, give a reason, and save. This operation cannot be performed via the command line. A version that has failed no checks cannot be rejected simply due to its age; it undergoes review independently. Submitting a response to the review comments without ticking the box does not close the version; it merely advances it to a moderator’s attention.
+
+A version number once rejected can never be pushed again. To the feed, it seems exactly as though it had never existed, making it impossible for the script to distinguish between the two, and thus the push attempt fails. The sole scenario the script catches beforehand is a rejected release that an approved fix of it sorts above.
 
 ### What the install script checks
 
